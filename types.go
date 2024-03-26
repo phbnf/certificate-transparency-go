@@ -426,6 +426,7 @@ const (
 	GetProofByHashStr    APIEndpoint = "get-proof-by-hash"
 	GetSTHConsistencyStr APIEndpoint = "get-sth-consistency"
 	GetRootsStr          APIEndpoint = "get-roots"
+	GetTileStr           APIEndpoint = "tile"
 	GetEntryAndProofStr  APIEndpoint = "get-entry-and-proof"
 )
 
@@ -440,6 +441,7 @@ const (
 	GetProofByHashPath    = "/ct/v1/get-proof-by-hash"
 	GetSTHConsistencyPath = "/ct/v1/get-sth-consistency"
 	GetRootsPath          = "/ct/v1/get-roots"
+	GetTilePath           = "/ct/v1/tile/"
 	GetEntryAndProofPath  = "/ct/v1/get-entry-and-proof"
 
 	AddJSONPath = "/ct/v1/add-json" // Experimental addition

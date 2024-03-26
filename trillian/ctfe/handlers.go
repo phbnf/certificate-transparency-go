@@ -38,6 +38,7 @@ import (
 	"github.com/google/trillian"
 	"github.com/google/trillian/monitoring"
 	"github.com/google/trillian/types"
+	"golang.org/x/mod/sumdb/tlog"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/encoding/prototext"
@@ -101,6 +102,7 @@ const (
 	GetProofByHashName    = EntrypointName("GetProofByHash")
 	GetEntriesName        = EntrypointName("GetEntries")
 	GetRootsName          = EntrypointName("GetRoots")
+	GetTileName           = EntrypointName("GetTile")
 	GetEntryAndProofName  = EntrypointName("GetEntryAndProof")
 )
 
@@ -146,7 +148,7 @@ func setupMetrics(mf monitoring.MetricFactory) {
 }
 
 // Entrypoints is a list of entrypoint names as exposed in statistics/logging.
-var Entrypoints = []EntrypointName{AddChainName, AddPreChainName, GetSTHName, GetSTHConsistencyName, GetProofByHashName, GetEntriesName, GetRootsName, GetEntryAndProofName}
+var Entrypoints = []EntrypointName{AddChainName, AddPreChainName, GetSTHName, GetSTHConsistencyName, GetProofByHashName, GetEntriesName, GetRootsName, GetEntryAndProofName, GetTileName}
 
 // PathHandlers maps from a path to the relevant AppHandler instance.
 type PathHandlers map[string]AppHandler
@@ -351,6 +353,7 @@ func (li *logInfo) Handlers(prefix string) PathHandlers {
 		prefix + ct.GetEntriesPath:        AppHandler{Info: li, Handler: getEntries, Name: GetEntriesName, Method: http.MethodGet},
 		prefix + ct.GetRootsPath:          AppHandler{Info: li, Handler: getRoots, Name: GetRootsName, Method: http.MethodGet},
 		prefix + ct.GetEntryAndProofPath:  AppHandler{Info: li, Handler: getEntryAndProof, Name: GetEntryAndProofName, Method: http.MethodGet},
+		prefix + ct.GetTilePath:           AppHandler{Info: li, Handler: getTile, Name: GetTileName, Method: http.MethodGet},
 	}
 	// Remove endpoints not provided by readonly logs and mirrors.
 	if li.instanceOpts.Validated.Config.IsReadonly || li.instanceOpts.Validated.Config.IsMirror {
@@ -373,6 +376,7 @@ func (li *logInfo) SendHTTPError(w http.ResponseWriter, statusCode int, err erro
 // getSTH returns the current STH as known to the STH getter, and updates tree
 // size / timestamp metrics correspondingly.
 func (li *logInfo) getSTH(ctx context.Context) (*ct.SignedTreeHead, error) {
+	klog.Infof("HEEELLLOO lkjlkj")
 	sth, err := li.sthGetter.GetSTH(ctx)
 	if err != nil {
 		return nil, err
@@ -493,6 +497,7 @@ func addChainInternal(ctx context.Context, li *logInfo, w http.ResponseWriter, r
 		return http.StatusInternalServerError, errors.New("missing QueueLeaves response")
 	}
 	if rsp.QueuedLeaf == nil {
+
 		return http.StatusInternalServerError, errors.New("QueueLeaf did not return the leaf")
 	}
 
@@ -877,6 +882,52 @@ func getEntryAndProof(ctx context.Context, li *logInfo, w http.ResponseWriter, r
 		// Probably too late for this as headers might have been written but we don't know for sure
 		return http.StatusInternalServerError, fmt.Errorf("failed to write get-entry-and-proof resp: %s", err)
 	}
+
+	return http.StatusOK, nil
+}
+
+func getTile(ctx context.Context, li *logInfo, w http.ResponseWriter, r *http.Request) (int, error) {
+	// Here be dragons: "tile" should not be used in the URL for anything other
+	// than the start of the tile path. Include a forward slash before and
+	// after tile, to prevent this from breaking if a log name contains "tile"
+	// TODO(phboneff): use pattern matching when bumping to go 1.22
+	startTilePath := strings.Index(r.URL.Path, "/tile/")
+	if startTilePath < 0 {
+		return http.StatusBadRequest, fmt.Errorf("failed to parse tile path: %s", r.URL.Path)
+	}
+	// TODO check if the request is okay with the current size of the log
+	// TODO so something about partial tiles as well
+	// TODO add logging
+	// TODO: GethTheTileKey
+	// +1 to remove the prefix forward slash in /tile/
+	t, err := tlog.ParseTilePath(r.URL.Path[startTilePath+1:])
+
+	// TODO: reject if the tile size is not correct
+	if err != nil {
+		return http.StatusBadRequest, fmt.Errorf("failed to parse tile path: %s", err)
+	}
+	req := trillian.GetTileRequest{
+		LogId:    li.logID,
+		TileKey:  &trillian.TileKey{TileLevel: uint64(t.L), TileIndex: uint64(t.N)},
+		ChargeTo: li.chargeUser(r),
+	}
+
+	rsp, err := li.rpcClient.GetTile(ctx, &req)
+	if err != nil {
+		return li.toHTTPStatus(err), fmt.Errorf("backend GetTile request failed: %s", err)
+	}
+
+	// TODO put the hashsize somwhere better
+	hashSize := 32
+	tile := make([]byte, t.W*hashSize)
+	// TODO: go over all the prefixes
+	for i := 0; i < t.W; i++ {
+		// Use the SubtreeProto keys encoding.
+		k := base64.StdEncoding.EncodeToString([]byte{8, byte(i)})
+		copy(tile[i*hashSize:], rsp.Tile.Leaves[k])
+	}
+
+	_, err = w.Write(tile)
 
 	return http.StatusOK, nil
 }

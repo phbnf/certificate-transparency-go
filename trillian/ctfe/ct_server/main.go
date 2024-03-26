@@ -371,6 +371,7 @@ func setupAndRegister(ctx context.Context, client trillian.TrillianLogClient, de
 		return nil, err
 	}
 	for path, handler := range inst.Handlers {
+		klog.Infof(lhp + path)
 		mux.Handle(lhp+path, handler)
 	}
 	return inst, nil
