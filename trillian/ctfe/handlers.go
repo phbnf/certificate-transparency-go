@@ -895,6 +895,7 @@ func getTile(ctx context.Context, li *logInfo, w http.ResponseWriter, r *http.Re
 	if startTilePath < 0 {
 		return http.StatusBadRequest, fmt.Errorf("failed to parse tile path: %s", r.URL.Path)
 	}
+	klog.Info(r.URL.Path[:])
 	// TODO check if the request is okay with the current size of the log
 	// TODO so something about partial tiles as well
 	// TODO add logging
