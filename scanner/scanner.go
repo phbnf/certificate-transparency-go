@@ -251,13 +251,13 @@ func (s *Scanner) logThroughput(treeSize int64, stop <-chan bool) {
 // LogEntry, which includes the index of the entry and the certificate.
 // For each precert found, calls foundPrecert with the corresponding LogEntry,
 // which includes the index of the entry and the precert.
-func (s *Scanner) Scan(ctx context.Context, foundCert func(*ct.RawLogEntry), foundPrecert func(*ct.RawLogEntry)) error {
-	_, err := s.ScanLog(ctx, foundCert, foundPrecert)
+func (s *Scanner) Scan(ctx context.Context, foundCert func(*ct.RawLogEntry), foundPrecert func(*ct.RawLogEntry), maxNewEntries func() int64) error {
+	_, err := s.ScanLog(ctx, foundCert, foundPrecert, maxNewEntries)
 	return err
 }
 
 // ScanLog performs a scan against the Log, returning the count of scanned entries.
-func (s *Scanner) ScanLog(ctx context.Context, foundCert func(*ct.RawLogEntry), foundPrecert func(*ct.RawLogEntry)) (int64, error) {
+func (s *Scanner) ScanLog(ctx context.Context, foundCert func(*ct.RawLogEntry), foundPrecert func(*ct.RawLogEntry), maxNewEntries func() int64) (int64, error) {
 	klog.V(1).Infof("Starting up Scanner...")
 	s.certsProcessed = 0
 	s.certsMatched = 0
@@ -296,7 +296,7 @@ func (s *Scanner) ScanLog(ctx context.Context, foundCert func(*ct.RawLogEntry), 
 			entries <- entryInfo{index: b.Start + int64(i), entry: e}
 		}
 	}
-	err = s.fetcher.Run(ctx, flatten)
+	err = s.fetcher.Run(ctx, flatten, maxNewEntries)
 	close(entries) // Causes matcher workers to terminate.
 	wg.Wait()      // Wait until they terminate.
 	if err != nil {

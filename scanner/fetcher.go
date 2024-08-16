@@ -130,7 +130,7 @@ func (f *Fetcher) Prepare(ctx context.Context) (*ct.SignedTreeHead, error) {
 // Run performs fetching of the Log. Blocks until scanning is complete, the
 // passed in context is canceled, or Stop is called (and pending work is
 // finished). For each successfully fetched batch, runs the fn callback.
-func (f *Fetcher) Run(ctx context.Context, fn func(EntryBatch)) error {
+func (f *Fetcher) Run(ctx context.Context, fn func(EntryBatch), maxNewEntries func() int64) error {
 	klog.V(1).Infof("%s: Starting up Fetcher...", f.uri)
 	if _, err := f.Prepare(ctx); err != nil {
 		return err
@@ -146,7 +146,7 @@ func (f *Fetcher) Run(ctx context.Context, fn func(EntryBatch)) error {
 	// Use a separately-cancelable context for the range generator, so we can
 	// close it down (in Stop) but still let the fetchers below run to
 	// completion.
-	ranges := f.genRanges(cctx)
+	ranges := f.genRanges(cctx, maxNewEntries)
 
 	// Run fetcher workers.
 	var wg sync.WaitGroup
@@ -177,7 +177,7 @@ func (f *Fetcher) Stop() {
 // genRanges returns a channel of ranges to fetch, and starts a goroutine that
 // sends things down this channel. The goroutine terminates when all ranges
 // have been generated, or if context is cancelled.
-func (f *Fetcher) genRanges(ctx context.Context) <-chan fetchRange {
+func (f *Fetcher) genRanges(ctx context.Context, maxNewEntries func() int64) <-chan fetchRange {
 	batch := int64(f.opts.BatchSize)
 	ranges := make(chan fetchRange)
 
@@ -198,7 +198,7 @@ func (f *Fetcher) genRanges(ctx context.Context) <-chan fetchRange {
 				end = f.opts.EndIndex
 			}
 
-			batchEnd := start + min(end-start, batch)
+			batchEnd := start + min(min(end-start, batch), int64(maxNewEntries()))
 			next := fetchRange{start, batchEnd - 1}
 			select {
 			case <-ctx.Done():

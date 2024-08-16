@@ -198,6 +198,9 @@ func TestScannerEndToEnd(t *testing.T) {
 	var matchedPrecerts list.List
 
 	ctx := context.Background()
+	maxNewEntries := func() int64 {
+		return ^int64(0)
+	}
 	err = scanner.Scan(ctx, func(re *ct.RawLogEntry) {
 		// Annoyingly we can't t.Fatal() in here, as this is run in another go
 		// routine
@@ -212,7 +215,7 @@ func TestScannerEndToEnd(t *testing.T) {
 			return
 		}
 		matchedPrecerts.PushBack(*e.Precert)
-	})
+	}, maxNewEntries)
 
 	if err != nil {
 		t.Fatal(err)
