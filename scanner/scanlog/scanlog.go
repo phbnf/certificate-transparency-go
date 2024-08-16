@@ -33,6 +33,7 @@ import (
 	"github.com/google/certificate-transparency-go/jsonclient"
 	"github.com/google/certificate-transparency-go/scanner"
 	"github.com/google/certificate-transparency-go/x509"
+	"k8s.io/klog/v2"
 )
 
 const (
@@ -184,6 +185,7 @@ func createMatcherFromFlags(logClient *client.LogClient) (interface{}, error) {
 }
 
 func main() {
+	klog.InitFlags(nil)
 	flag.Parse()
 
 	logClient, err := client.New(*logURI, &http.Client{
@@ -219,12 +221,16 @@ func main() {
 	s := scanner.NewScanner(logClient, opts)
 
 	ctx := context.Background()
+	maxNewEntries := func() int64 {
+		return int64(^uint64(0) >> 1)
+	}
+	fmt.Println(maxNewEntries())
 	if *printChains {
-		if err := s.Scan(ctx, logFullChain, logFullChain); err != nil {
+		if err := s.Scan(ctx, logFullChain, logFullChain, maxNewEntries); err != nil {
 			log.Fatal(err)
 		}
 	} else {
-		if err := s.Scan(ctx, logCertInfo, logPrecertInfo); err != nil {
+		if err := s.Scan(ctx, logCertInfo, logPrecertInfo, maxNewEntries); err != nil {
 			log.Fatal(err)
 		}
 	}
