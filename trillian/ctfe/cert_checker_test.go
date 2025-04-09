@@ -23,6 +23,7 @@ import (
 
 	"github.com/google/certificate-transparency-go/asn1"
 	"github.com/google/certificate-transparency-go/trillian/ctfe/testonly"
+	"github.com/google/certificate-transparency-go/trillian/ctfe/testdata"
 	"github.com/google/certificate-transparency-go/x509"
 	"github.com/google/certificate-transparency-go/x509/pkix"
 	"github.com/google/certificate-transparency-go/x509util"
@@ -599,3 +600,75 @@ func TestCMPreIssuedCert(t *testing.T) {
 		})
 	}
 }
+
+func TestPreIssuedCert(t *testing.T) {
+	// TODO(phboneff): add a test to make sure that a pre-isser can't sign an end cert.
+	rawChain := chainFromPEMs(t, []string{
+		testdata.PreCertFromPreIntermediate,
+		testdata.PreIntermediateFromRoot,
+		testdata.CACertPEM}...)
+
+	roots := x509util.NewPEMCertPool()
+	if ok := roots.AppendCertsFromPEM([]byte(testdata.CACertPEM)); !ok {
+		t.Fatalf("failed to parse root cert")
+	}
+
+	for _, tc := range []struct {
+		desc    string
+		chain   [][]byte
+		eku     []x509.ExtKeyUsage
+		wantErr bool
+	}{
+		{
+			desc:  "no EKU specified",
+			chain: rawChain,
+		}, {
+			desc:  "EKU ServerAuth",
+			chain: rawChain,
+			eku:   []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		}, {
+			desc: "pre-issuer issued non pre-cert",
+			chain: chainFromPEMs(t, []string{
+				testdata.CertFromPreIntermediate,
+				testdata.PreIntermediateFromRoot,
+				testdata.CACertPEM}...),
+		},
+	} {
+		t.Run(tc.desc, func(t *testing.T) {
+			opts := CertValidationOpts{
+				trustedRoots: roots,
+				extKeyUsages: tc.eku,
+			}
+			chain, err := ValidateChain(rawChain, opts)
+			if err != nil {
+				t.Fatalf("failed to ValidateChain: %v", err)
+			}
+			for i, c := range chain {
+				t.Logf("chain[%d] = \n%s", i, c.Subject)
+			}
+		})
+	}
+}
+
+// chainFromPEMs builds a chain from a list of PEMs.
+func chainFromPEMs(t *testing.T, pems ...string) [][]byte {
+	t.Helper()
+	var chain [][]byte
+	for _, p := range pems {
+		pb := []byte(p)
+		for len(p) > 0 {
+			var block *pem.Block
+			block, pb = pem.Decode(pb)
+			if block == nil {
+				break
+			}
+			if block.Type != "CERTIFICATE" || len(block.Headers) != 0 {
+				continue
+			}
+			chain = append(chain, block.Bytes)
+		}
+	}
+
+	return chain
+}
+
