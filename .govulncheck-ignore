@@ -1,0 +1,5 @@
+# ID           Module                            Reason
+GO-2026-5264   github.com/prometheus/prometheus  Brought in via Trillian and unmaintainted https://github.com/census-instrumentation/opencensus-go - Remote read endpoint allows denial of service via crafted snappy payload in github.com/prometheus/prometheus
+GO-2026-5381   github.com/prometheus/prometheus  Brought in via Trillian and unmaintainted https://github.com/census-instrumentation/opencensus-go - Prometheus vulnerable to stored XSS via crafted histogram bucket label values in the old web UI heatmap display in github.com/prometheus/prometheus
+GO-2026-5662   github.com/prometheus/prometheus  Brought in via Trillian and unmaintainted https://github.com/census-instrumentation/opencensus-go - Prometheus has Stored XSS via metric names and label values in Prometheus web UI in github.com/prometheus/prometheus
+GO-2026-5710   github.com/prometheus/prometheus  Brought in via Trillian and unmaintainted https://github.com/census-instrumentation/opencensus-go - Prometheus Azure AD remote write OAuth client secret exposed via config API in github.com/prometheus/prometheus
