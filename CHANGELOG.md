@@ -2,6 +2,7 @@
 
 ## HEAD
 
+* Bump trillian to v1.8.0, and drop tracing support by @phbnf
 * Fix `tls.Unmarshal` decoding a `Uint24` field from the start of the buffer instead of the field's offset by @robstradling
 * Switch Ed25519 import from deprecated `golang.org/x/crypto/ed25519` to stdlib `crypto/ed25519` by @JasonPowr
 * Added `--emit_proxy_headers` flag to ctfe by @mhutchinson
