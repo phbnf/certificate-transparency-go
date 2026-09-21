@@ -24,7 +24,7 @@ import (
 	_ "github.com/golang/mock/mockgen"
 	_ "github.com/google/trillian/cmd/createtree"
 	_ "go.etcd.io/etcd/etcdctl/v3"
-	_ "go.etcd.io/etcd/v3"
+	_ "go.etcd.io/etcd/server/v3"
 	_ "google.golang.org/protobuf/cmd/protoc-gen-go"
 	_ "google.golang.org/grpc/cmd/protoc-gen-go-grpc"
 	_ "github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc"
