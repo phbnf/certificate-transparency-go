@@ -190,12 +190,28 @@ type LogState struct {
 	Timestamp time.Time `json:"timestamp"`
 }
 
+// String method returns a string representation of the log state.
+func (s *LogState) String() string {
+	if s == nil {
+		return "<nil>"
+	}
+	return fmt.Sprintf("Timestamp: %v", s.Timestamp)
+}
+
 // ReadOnlyLogState contains details on the current state of a read-only CT log.
 type ReadOnlyLogState struct {
 	LogState
 	// FinalTreeHead is the root hash and tree size at which the CT log was
 	// made read-only. This should never change while the log is read-only.
 	FinalTreeHead TreeHead `json:"final_tree_head"`
+}
+
+// String method returns a string representation of the read-only log state.
+func (r *ReadOnlyLogState) String() string {
+	if r == nil {
+		return "<nil>"
+	}
+	return fmt.Sprintf("%s, FinalTreeHead: %s", &r.LogState, r.FinalTreeHead)
 }
 
 // TreeHead is the root hash and tree size of a CT log.
@@ -209,22 +225,6 @@ type TreeHead struct {
 // String method returns a string representation of the tree head.
 func (th TreeHead) String() string {
 	return fmt.Sprintf("[SHA256RootHash: %x, TreeSize: %d]", th.SHA256RootHash, th.TreeSize)
-}
-
-// String method returns a string representation of the log state.
-func (s *LogState) String() string {
-	if s == nil {
-		return "<nil>"
-	}
-	return fmt.Sprintf("Timestamp: %v", s.Timestamp)
-}
-
-// String method returns a string representation of the read-only log state.
-func (r *ReadOnlyLogState) String() string {
-	if r == nil {
-		return "<nil>"
-	}
-	return fmt.Sprintf("%s, FinalTreeHead: %s", &r.LogState, r.FinalTreeHead)
 }
 
 // LogStatus method returns Log-status enum value for descriptive struct.
