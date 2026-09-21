@@ -206,6 +206,27 @@ type TreeHead struct {
 	TreeSize int64 `json:"tree_size"`
 }
 
+// String method returns a string representation of the tree head.
+func (th TreeHead) String() string {
+	return fmt.Sprintf("[SHA256RootHash: %x, TreeSize: %d]", th.SHA256RootHash, th.TreeSize)
+}
+
+// String method returns a string representation of the log state.
+func (s *LogState) String() string {
+	if s == nil {
+		return "<nil>"
+	}
+	return fmt.Sprintf("Timestamp: %v", s.Timestamp)
+}
+
+// String method returns a string representation of the read-only log state.
+func (r *ReadOnlyLogState) String() string {
+	if r == nil {
+		return "<nil>"
+	}
+	return fmt.Sprintf("%s, FinalTreeHead: %s", &r.LogState, r.FinalTreeHead)
+}
+
 // LogStatus method returns Log-status enum value for descriptive struct.
 func (ls *LogStates) LogStatus() LogStatus {
 	switch {
