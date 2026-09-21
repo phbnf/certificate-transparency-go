@@ -42,7 +42,6 @@ import (
 	"github.com/google/trillian/crypto/keys/pem"
 	"github.com/google/trillian/crypto/keys/pkcs11"
 	"github.com/google/trillian/crypto/keyspb"
-	"github.com/google/trillian/monitoring/opencensus"
 	"github.com/google/trillian/monitoring/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/cors"
@@ -74,9 +73,6 @@ var (
 	etcdHTTPService         = flag.String("etcd_http_service", "trillian-ctfe-http", "Service name to announce our HTTP endpoint under")
 	etcdMetricsService      = flag.String("etcd_metrics_service", "trillian-ctfe-metrics-http", "Service name to announce our HTTP metrics endpoint under")
 	maskInternalErrors      = flag.Bool("mask_internal_errors", false, "Don't return error strings with Internal Server Error HTTP responses")
-	tracing                 = flag.Bool("tracing", false, "If true opencensus Stackdriver tracing will be enabled. See https://opencensus.io/.")
-	tracingProjectID        = flag.String("tracing_project_id", "", "project ID to pass to stackdriver. Can be empty for GCP, consult docs for other platforms.")
-	tracingPercent          = flag.Int("tracing_percent", 0, "Percent of requests to be traced. Zero is a special case to use the DefaultSampler")
 	quotaRemote             = flag.Bool("quota_remote", true, "Enable requesting of quota for IP address sending incoming requests")
 	quotaIntermediate       = flag.Bool("quota_intermediate", true, "Enable requesting of quota for intermediate certificates in submitted chains")
 	nonFreshSubmissionAge   = flag.Duration("non_fresh_submission_age", time.Hour*24, "Maximum age of a fresh submission")
@@ -325,15 +321,6 @@ func main() {
 		http.Handle("/metrics", promhttp.Handler())
 	}
 
-	// If we're enabling tracing we need to use an instrumented http.Handler.
-	var handler http.Handler
-	if *tracing {
-		handler, err = opencensus.EnableHTTPServerTracing(*tracingProjectID, *tracingPercent)
-		if err != nil {
-			klog.Exitf("Failed to initialize stackdriver / opencensus tracing: %v", err)
-		}
-	}
-
 	// Bring up the HTTP server and serve until we get a signal not to.
 	srv := http.Server{}
 	if *tlsCert != "" && *tlsKey != "" {
@@ -347,7 +334,6 @@ func main() {
 		}
 		srv = http.Server{
 			Addr:              *httpEndpoint,
-			Handler:           handler,
 			TLSConfig:         tlsConfig,
 			MaxHeaderBytes:    128 * 1024,
 			ReadHeaderTimeout: 10 * time.Second,
@@ -358,7 +344,6 @@ func main() {
 	} else {
 		srv = http.Server{
 			Addr:              *httpEndpoint,
-			Handler:           handler,
 			MaxHeaderBytes:    128 * 1024,
 			ReadHeaderTimeout: 10 * time.Second,
 			ReadTimeout:       2 * time.Minute,
